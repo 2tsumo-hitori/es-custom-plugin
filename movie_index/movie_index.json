@@ -1,0 +1,205 @@
+# 1. movieNm 데이터 색인할 때 index_analyzer
+# 2. 일반 검색할 때 search_analyzer
+# 3. 오타 교정(suggest)할 때 fix_analyzer
+# 4. 한영/영한 교정할 때 eng2kor_index_analyzer, kor2eng_index_analyzer
+# 5. 자동완성은 match_phrase_prefix, fuzzy 사용
+# 6. 초성검색은 chosung_index_analyzer, chosung_search_analyzer
+
+PUT my_movie_search
+{
+  "settings": {
+    "number_of_shards": 5,
+    "index.max_ngram_diff": 50,
+    "analysis": {
+      "filter": {
+        "ngram3_filter": {
+          "type": "ngram",
+          "min_gram": 3,
+          "max_gram": 50
+        },
+        "ngram4_filter": {
+          "type": "ngram",
+          "min_gram": 4,
+          "max_gram": 50
+        }
+      },
+      "char_filter": {
+        "nfd_normalizer" : {
+          "mode" : "decompose",
+          "name" : "nfc",
+          "type" : "icu_normalizer"
+        },
+        "white_remove_char_filter": {
+          "type": "pattern_replace",
+          "pattern": "\\s+",
+          "replacement": ""
+        },
+        "special_character_filter": {
+          "pattern": "[^\\p{L}\\p{Nd}\\p{Blank}]",
+          "type": "pattern_replace",
+          "replacement": ""
+        }
+      },
+      "tokenizer" : {
+        "korean_nori_tokenizer" : {
+          "type" : "nori_tokenizer",
+          "decompound_mode" : "mixed"
+        }
+      },
+      "analyzer": {
+        "fix_analyzer": {
+          "char_filter": [
+            "nfd_normalizer"  
+          ],
+          "tokenizer": "korean_nori_tokenizer"
+        },
+        "default_kor_analyzer": {
+          "filter": [
+            "lowercase"
+          ],
+          "tokenizer": "korean_nori_tokenizer"
+        },
+        "kor2eng_index_analyzer": {
+          "type": "custom",
+          "char_filter": [
+            "special_character_filter",
+            "white_remove_char_filter"
+          ],
+          "tokenizer": "keyword",
+          "filter": [
+            "lowercase",
+            "javacafe_kor2eng",
+            "ngram3_filter"
+          ]
+        },
+        "eng2kor_index_analyzer": {
+          "type": "custom",
+          "char_filter": [
+            "special_character_filter",
+            "white_remove_char_filter"
+          ],
+          "tokenizer": "keyword",
+          "filter": [
+            "lowercase",
+            "javacafe_eng2kor",
+            "ngram4_filter"
+          ]
+        },
+        "kor2eng_search_analyzer": {
+          "type": "custom",
+          "char_filter": [
+            "special_character_filter"
+          ],
+          "tokenizer": "standard",
+          "filter": ["lowercase"]
+        },
+        "eng2kor_search_analyzer": {
+          "type": "custom",
+          "char_filter": [
+            "special_character_filter"
+          ],
+          "tokenizer": "standard",
+          "filter": ["lowercase"]
+        },
+        "chosung_index_analyzer": {
+          "type": "custom",
+          "char_filter": [
+            "white_remove_char_filter",
+            "special_character_filter"
+          ],
+          "tokenizer": "keyword",
+          "filter": [
+            "lowercase",
+            "javacafe_chosung",
+            "ngram4_filter"
+          ]
+        },
+        "chosung_search_analyzer": {
+          "type": "custom",
+          "char_filter": [
+            "special_character_filter"
+          ],
+          "tokenizer": "standard",
+          "filter": [
+            "lowercase"
+          ]
+        }
+      }
+    }
+  },
+  "mappings": {
+    "properties": {
+      "movieCd": {
+        "type": "keyword"
+      },
+      "movieNm": {
+        "type": "keyword",
+        "copy_to": ["movieNm_text", "movieNm_chosung", "movieNm_eng2kor", "movieNm_kor2eng"]
+      },
+      "movieNm_text": {
+        "type": "text",
+        "analyzer": "default_kor_analyzer"
+      },
+      "movieNm_chosung": {
+        "type": "text",
+        "analyzer": "chosung_index_analyzer",
+        "search_analyzer": "chosung_search_analyzer"
+      },
+      "movieNm_eng2kor": {
+        "type": "text",
+        "analyzer": "eng2kor_index_analyzer", 
+        "search_analyzer": "eng2kor_search_analyzer"
+      },
+      "movieNm_kor2eng": {
+        "type": "text",
+        "analyzer": "kor2eng_index_analyzer", 
+        "search_analyzer": "kor2eng_search_analyzer"
+      },
+      "movieNmEn": {
+        "type":"text",
+        "analyzer":"standard"
+      },
+      "prdtYear": {
+        "type": "integer"
+      },
+      "openDt": {
+        "type": "integer"
+      },
+      "typeNm": {
+        "type": "keyword"
+      },
+      "prdtStatNm": {
+        "type": "keyword"
+      },
+      "nationAlt": {
+        "type": "keyword"
+      },
+      "genreAlt": {
+        "type":"keyword"
+      },
+      "repNationNm": {
+        "type":"keyword"
+      },
+      "repGenreNm": {
+        "type":"keyword"
+      },
+      "companies": {
+        "properties": {
+          "companyCd": {
+            "type": "keyword"
+          },
+          "companyNm": {
+            "type": "keyword"
+          }
+        }
+      },
+      "directors": {
+        "properties": {
+          "peopleNm": {
+            "type": "keyword"
+          }
+        }
+      }
+    }
+  }
+}
