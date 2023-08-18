@@ -1,10 +1,3 @@
-# 1. movieNm 데이터 색인할 때 index_analyzer
-# 2. 일반 검색할 때 search_analyzer
-# 3. 오타 교정(suggest)할 때 fix_analyzer
-# 4. 한영/영한 교정할 때 eng2kor_index_analyzer, kor2eng_index_analyzer
-# 5. 자동완성은 match_phrase_prefix, fuzzy 사용
-# 6. 초성검색은 chosung_index_analyzer, chosung_search_analyzer
-
 PUT my_movie_search
 {
   "settings": {
@@ -12,6 +5,9 @@ PUT my_movie_search
     "index.max_ngram_diff": 50,
     "analysis": {
       "filter": {
+        "javacafe_jamo_filter": {
+          "type": "javacafe_jamo"
+        },
         "ngram3_filter": {
           "type": "ngram",
           "min_gram": 3,
@@ -49,7 +45,7 @@ PUT my_movie_search
       "analyzer": {
         "fix_analyzer": {
           "char_filter": [
-            "nfd_normalizer"  
+            "nfd_normalizer"
           ],
           "tokenizer": "korean_nori_tokenizer"
         },
@@ -59,47 +55,21 @@ PUT my_movie_search
           ],
           "tokenizer": "korean_nori_tokenizer"
         },
-        "kor2eng_index_analyzer": {
-          "type": "custom",
-          "char_filter": [
-            "special_character_filter",
-            "white_remove_char_filter"
-          ],
-          "tokenizer": "keyword",
-          "filter": [
-            "lowercase",
-            "javacafe_kor2eng",
-            "ngram3_filter"
-          ]
-        },
-        "eng2kor_index_analyzer": {
-          "type": "custom",
-          "char_filter": [
-            "special_character_filter",
-            "white_remove_char_filter"
-          ],
-          "tokenizer": "keyword",
-          "filter": [
-            "lowercase",
-            "javacafe_eng2kor",
-            "ngram4_filter"
-          ]
-        },
         "kor2eng_search_analyzer": {
           "type": "custom",
-          "char_filter": [
-            "special_character_filter"
-          ],
           "tokenizer": "standard",
-          "filter": ["lowercase"]
+          "filter": [
+            "javacafe_kor2eng"
+          ]
         },
         "eng2kor_search_analyzer": {
           "type": "custom",
-          "char_filter": [
-            "special_character_filter"
-          ],
           "tokenizer": "standard",
-          "filter": ["lowercase"]
+          "filter": [
+            "trim",
+            "lowercase",
+            "javacafe_eng2kor"
+          ]
         },
         "chosung_index_analyzer": {
           "type": "custom",
@@ -123,6 +93,30 @@ PUT my_movie_search
           "filter": [
             "lowercase"
           ]
+        },
+        "jamo_index_analyzer": {
+          "type": "custom",
+          "char_filter": [
+            "white_remove_char_filter",
+            "special_character_filter"
+          ],
+          "tokenizer": "keyword",
+          "filter": [
+            "javacafe_jamo_filter",
+            "lowercase",
+            "ngram3_filter"
+          ]
+        },
+        "jamo_search_analyzer": {
+          "type": "custom",
+          "char_filter": [
+            "special_character_filter"
+          ],
+          "tokenizer": "standard",
+          "filter": [
+            "javacafe_jamo_filter",
+            "lowercase"
+          ]
         }
       }
     }
@@ -134,11 +128,17 @@ PUT my_movie_search
       },
       "movieNm": {
         "type": "keyword",
-        "copy_to": ["movieNm_text", "movieNm_chosung", "movieNm_eng2kor", "movieNm_kor2eng"]
+        "copy_to": ["movieNm_text", "movieNm_chosung", "movieNm_eng2kor", "movieNm_kor2eng", "movieNm_ac"]
       },
       "movieNm_text": {
         "type": "text",
-        "analyzer": "default_kor_analyzer"
+        "analyzer": "default_kor_analyzer",
+        "fields": {
+          "fix": {
+            "type": "text",
+            "analyzer": "fix_analyzer"
+          }
+        }
       },
       "movieNm_chosung": {
         "type": "text",
@@ -147,13 +147,18 @@ PUT my_movie_search
       },
       "movieNm_eng2kor": {
         "type": "text",
-        "analyzer": "eng2kor_index_analyzer", 
+        "analyzer": "standard", 
         "search_analyzer": "eng2kor_search_analyzer"
       },
       "movieNm_kor2eng": {
         "type": "text",
-        "analyzer": "kor2eng_index_analyzer", 
+        "analyzer": "standard", 
         "search_analyzer": "kor2eng_search_analyzer"
+      },
+      "movieNm_ac": {
+        "type": "text",
+        "analyzer": "jamo_index_analyzer", 
+        "search_analyzer": "jamo_search_analyzer"
       },
       "movieNmEn": {
         "type":"text",
