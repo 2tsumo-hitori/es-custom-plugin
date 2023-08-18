@@ -1,4 +1,3 @@
-PUT my_movie_search
 {
   "settings": {
     "number_of_shards": 5,
