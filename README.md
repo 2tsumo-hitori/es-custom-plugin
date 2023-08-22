@@ -2,86 +2,166 @@
 
 # 자바카페 플러그인 7.0.0 -> 7.9.1로 버전 수정 후 빌드
 
-## 엘라스틱 서치 자동완성
-- 인덱스에 색인할 때 nori_analyzer 사용
-- 자동완성은 ngram, suggest는 지양하고 match_phrase_prefix가 좋은듯함
-  ### 근거
-  1. 검색 대상에 따라 다르겠지만 명사 위주로 검색하는 경우 多
-  2. nori_analyzer가 명사 단위로 색인해서 저장함
+# 초성 부분 검색 기능구현
+  - 색인 시 movieNm의 길이를 필드로 추가해주는 파이프라인
+  - 초성을 색인할 때 edgeNgram의 side를 활용
+
+## Query Dsl
 ```
-GET autocomplete_test_1/_search
+# 초성검색
+POST my_movie_search/_search
 {
   "query": {
-    "match_phrase_prefix": {
-      "word": "폰"
+    "bool": {
+      "must": [
+        {
+          "bool": {
+            "should": [
+              {
+                "match": {
+                  "movieNm_chosung_front": "ㅎㅂㄹㄱ"
+                }
+              },
+              {
+                "match": {
+                  "movieNm_chosung_back": "ㅎㅂㄹㄱ"
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "should": [
+        {
+          "range": {
+            "movieNmCount": {
+              "lte": 4
+            }
+          }
+        }
+      ]
     }
-  }
+  },
+  "sort": [
+    {
+      "movieNmCount": {
+        "order": "asc"
+      }
+    }
+  ],
+  "_source": "movieNm"
 }
 ```
-
-``` {
-  "took" : 0,
-  "timed_out" : false,
-  "_shards" : {
-    "total" : 1,
-    "successful" : 1,
-    "skipped" : 0,
-    "failed" : 0
-  },
-  "hits" : {
-    "total" : {
-      "value" : 5,
-      "relation" : "eq"
-    },
-    "max_score" : 1.1651303,
-    "hits" : [
+## Response
+```
+"hits" : [
       {
-        "_index" : "autocomplete_test_1",
+        "_index" : "my_movie_search",
         "_type" : "_doc",
-        "_id" : "9",
-        "_score" : 1.1651303,
+        "_id" : "uj3JqmkBjjM-ebDb_YqV",
+        "_score" : null,
         "_source" : {
-          "word" : "스마트폰 추천"
-        }
+          "movieNm" : "해바라기"
+        },
+        "sort" : [
+          4
+        ]
       },
       {
-        "_index" : "autocomplete_test_1",
+        "_index" : "my_movie_search",
         "_type" : "_doc",
-        "_id" : "10",
-        "_score" : 1.1651303,
+        "_id" : "zT3JqmkBjjM-ebDb-VmP",
+        "_score" : null,
         "_source" : {
-          "word" : "폰게임 환불"
-        }
+          "movieNm" : "해바라기"
+        },
+        "sort" : [
+          4
+        ]
       },
       {
-        "_index" : "autocomplete_test_1",
+        "_index" : "my_movie_search",
         "_type" : "_doc",
-        "_id" : "14",
-        "_score" : 1.1651303,
+        "_id" : "aD3JqmkBjjM-ebDb9CjG",
+        "_score" : null,
         "_source" : {
-          "word" : "폰게임 순위"
-        }
+          "movieNm" : "해바라기"
+        },
+        "sort" : [
+          4
+        ]
       },
       {
-        "_index" : "autocomplete_test_1",
+        "_index" : "my_movie_search",
         "_type" : "_doc",
-        "_id" : "15",
-        "_score" : 1.1651303,
+        "_id" : "Kj3KqmkBjjM-ebDbCO5q",
+        "_score" : null,
         "_source" : {
-          "word" : "폰게임 추천"
-        }
+          "movieNm" : "해바라기 가족"
+        },
+        "sort" : [
+          7
+        ]
       },
       {
-        "_index" : "autocomplete_test_1",
+        "_index" : "my_movie_search",
         "_type" : "_doc",
-        "_id" : "16",
-        "_score" : 1.0311216,
+        "_id" : "_T3JqmkBjjM-ebDb9CTG",
+        "_score" : null,
         "_source" : {
-          "word" : "스마트폰게임 추천"
-        }
+          "movieNm" : "해바라기의 습격"
+        },
+        "sort" : [
+          8
+        ]
+      },
+      {
+        "_index" : "my_movie_search",
+        "_type" : "_doc",
+        "_id" : "cj3JqmkBjjM-ebDb_XqU",
+        "_score" : null,
+        "_source" : {
+          "movieNm" : "해바라기들의 밤"
+        },
+        "sort" : [
+          8
+        ]
+      },
+      {
+        "_index" : "my_movie_search",
+        "_type" : "_doc",
+        "_id" : "PD3KqmkBjjM-ebDbBdUP",
+        "_score" : null,
+        "_source" : {
+          "movieNm" : "해바라기야이제그만잠들렴"
+        },
+        "sort" : [
+          12
+        ]
+      },
+      {
+        "_index" : "my_movie_search",
+        "_type" : "_doc",
+        "_id" : "XD3KqmkBjjM-ebDbCOpq",
+        "_score" : null,
+        "_source" : {
+          "movieNm" : "밤을 기다리는 해바라기"
+        },
+        "sort" : [
+          12
+        ]
+      },
+      {
+        "_index" : "my_movie_search",
+        "_type" : "_doc",
+        "_id" : "bj3JqmkBjjM-ebDb9DfI",
+        "_score" : null,
+        "_source" : {
+          "movieNm" : "명탐정 코난 : 화염의 해바라기"
+        },
+        "sort" : [
+          17
+        ]
       }
     ]
-  }
-}
-
 ```
