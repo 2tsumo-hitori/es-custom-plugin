@@ -1,3 +1,14 @@
+# my_movie_search 인덱스 구성
+
+# 1. movieNm 데이터 색인, 검색할 때 default_kor_analyzer (analysis-nori)
+# 2. 오타 교정(suggest)할 때 fix_analyzer (analysis-icu)
+# 3. 한영/영한 교정할 때 eng2kor_search_analyzer, kor2eng_search_analyzer (javacafe-analyzer)
+# 4. 자동완성은 jamo_index_analyzer, jamo_search_analyzer (javacafe-analyzer)
+# 5. 초성검색은 chosung_index_analyzer, chosung_search_analyzer (javacafe-analyzer)
+
+# 6. edgeNgram side를 활용해서 초성 부분검색 구현
+
+PUT my_movie_search
 {
   "settings": {
     "number_of_shards": 5,
@@ -7,10 +18,20 @@
         "javacafe_jamo_filter": {
           "type": "javacafe_jamo"
         },
-        "ngram3_filter": {
-          "type": "ngram",
-          "min_gram": 3,
-          "max_gram": 50
+        "javacafe_chosung_filter": {
+          "type": "javacafe_chosung"
+        },
+        "ngram3_front_filter": {
+          "type": "edge_ngram",
+          "min_gram": 2,
+          "max_gram": 50,
+          "side": "front"
+        },
+        "ngram3_back_filter": {
+          "type": "edge_ngram",
+          "min_gram": 2,
+          "max_gram": 50,
+          "side": "back"
         },
         "ngram4_filter": {
           "type": "ngram",
@@ -70,25 +91,39 @@
             "javacafe_eng2kor"
           ]
         },
-        "chosung_index_analyzer": {
+        "chosung_index_front_analyzer": {
+          "type": "custom",
+          "char_filter": [
+            "special_character_filter",
+            "white_remove_char_filter"
+          ],
+          "tokenizer": "keyword",
+          "filter": [
+            "javacafe_chosung_filter",
+            "lowercase",
+            "ngram3_front_filter"
+          ]
+        },
+        "chosung_index_back_analyzer": {
+          "type": "custom",
+          "char_filter": [
+            "special_character_filter",
+            "white_remove_char_filter"
+          ],
+          "tokenizer": "keyword",
+          "filter": [
+            "javacafe_chosung_filter",
+            "lowercase",
+            "ngram3_back_filter"
+          ]
+        },
+        "chosung_search_analyzer": {
           "type": "custom",
           "char_filter": [
             "white_remove_char_filter",
             "special_character_filter"
           ],
           "tokenizer": "keyword",
-          "filter": [
-            "lowercase",
-            "javacafe_chosung",
-            "ngram4_filter"
-          ]
-        },
-        "chosung_search_analyzer": {
-          "type": "custom",
-          "char_filter": [
-            "special_character_filter"
-          ],
-          "tokenizer": "standard",
           "filter": [
             "lowercase"
           ]
@@ -103,7 +138,7 @@
           "filter": [
             "javacafe_jamo_filter",
             "lowercase",
-            "ngram3_filter"
+            "ngram3_front_filter"
           ]
         },
         "jamo_search_analyzer": {
@@ -127,7 +162,7 @@
       },
       "movieNm": {
         "type": "keyword",
-        "copy_to": ["movieNm_text", "movieNm_chosung", "movieNm_eng2kor", "movieNm_kor2eng", "movieNm_ac"]
+        "copy_to": ["movieNm_text", "movieNm_chosung_front", "movieNm_chosung_back","movieNm_eng2kor", "movieNm_kor2eng", "movieNm_ac"]
       },
       "movieNm_text": {
         "type": "text",
@@ -139,9 +174,14 @@
           }
         }
       },
-      "movieNm_chosung": {
+      "movieNm_chosung_front": {
         "type": "text",
-        "analyzer": "chosung_index_analyzer",
+        "analyzer": "chosung_index_front_analyzer",
+        "search_analyzer": "chosung_search_analyzer"
+      },
+      "movieNm_chosung_back": {
+        "type": "text",
+        "analyzer": "chosung_index_back_analyzer",
         "search_analyzer": "chosung_search_analyzer"
       },
       "movieNm_eng2kor": {
