@@ -1,0 +1,3 @@
+cluster.name: docker-elk-cluster
+node.name: node-1
+path.data: /usr/share/elasticsearch/data
