@@ -1,12 +1,17 @@
 # my_movie_search 인덱스 구성
 
-# 1. movieNm 데이터 색인, 검색할 때 default_kor_analyzer (analysis-nori)
+# 1. movieNm 데이터 색인할 때, 검색할 때 default_kor_analyzer (analysis-nori)
 # 2. 오타 교정(suggest)할 때 fix_analyzer (analysis-icu)
 # 3. 한영/영한 교정할 때 eng2kor_search_analyzer, kor2eng_search_analyzer (javacafe-analyzer)
 # 4. 자동완성은 jamo_index_analyzer, jamo_search_analyzer (javacafe-analyzer)
 # 5. 초성검색은 chosung_index_analyzer, chosung_search_analyzer (javacafe-analyzer)
 
-# 6. edgeNgram side를 활용해서 초성 부분검색 구현
+GET _cat/plugins
+
+DELETE my_movie_search
+
+POST my_movie_search/_close
+POST my_movie_search/_open
 
 PUT my_movie_search
 {
@@ -64,10 +69,13 @@ PUT my_movie_search
       },
       "analyzer": {
         "fix_analyzer": {
-          "char_filter": [
-            "nfd_normalizer"
-          ],
-          "tokenizer": "korean_nori_tokenizer"
+          "type": "custom",
+          "tokenizer": "standard",
+          "filter": [
+            "trim",
+            "lowercase",
+            "javacafe_spell"
+          ]
         },
         "default_kor_analyzer": {
           "filter": [
@@ -168,7 +176,10 @@ PUT my_movie_search
         "type": "text",
         "analyzer": "default_kor_analyzer",
         "fields": {
-          "fix": {
+          "raw": {
+            "type": "keyword"
+          },
+          "spell": {
             "type": "text",
             "analyzer": "fix_analyzer"
           }
@@ -244,6 +255,167 @@ PUT my_movie_search
           }
         }
       }
+    }
+  }
+}
+
+#movie_search reindex
+
+POST my_movie_search/_analyze
+{
+  "analyzer": "default_kor_analyzer",
+  "text": "게게게"
+}
+
+POST my_movie_search/_analyze
+{
+  "analyzer": "chosung_search_analyzer",
+  "text": "ㅎㅇㅇ ㅎㅂㄹㄱ"
+}
+
+
+
+POST _reindex?wait_for_completion=false&slices=auto
+{
+  "source": {
+    "index": "movie_search",
+    "size": 10000
+  },
+  "dest":{
+    "index": "my_movie_search",
+    "pipeline": "movieNm_count_pipeline"
+  }
+}
+
+GET _tasks/FVP1JtH-TNCYWlXK1x4utQ:121005
+
+GET my_movie_search/_count
+
+GET my_movie_search/_search
+{
+  "query": {
+    "match": {
+      "movieNm_text": "안녀"
+    }
+  }
+}
+
+
+GET my_movie_search/_search
+{
+  "query": {
+    "bool": {
+      "should": [
+        {
+          "match": {
+            "movieNm_text": "ㅣㅐㅍㄷ"
+          }
+        }
+      ]
+    }
+  }
+}
+
+
+# 해바라기 / ㅎ ㅐ ㅂ ㅏ ㄹ ㅏ ㄱ ㅣ / count / 인기도점수
+
+# 아메리칸 닌자 3 / ㅇ ㅁ ㄹ ㅋ ㄴ ㅈ 3
+
+# 
+
+# 초성검색
+POST my_movie_search/_search
+{
+  "query": {
+    "bool": {
+      "must": [
+        {
+          "bool": {
+            "should": [
+              {
+                "match": {
+                  "movieNm_chosung_front": "ㅇㅅㅇㅅㅇ"
+                }
+              },
+              {
+                "match": {
+                  "movieNm_chosung_back": "ㅇㅅㅇㅅㅇ"
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "should": [
+        {
+          "range": {
+            "movieNmCount": {
+              "lte": 5
+            }
+          }
+        }
+      ]
+    }
+  },
+  "sort": [
+    {
+      "movieNmCount": {
+        "order": "asc"
+      }
+    }
+  ],
+  "_source": "movieNm"
+}
+
+# 한/영 오타 변환
+POST my_movie_search/_search
+{
+  "size": 1, 
+  "query": {
+    "match": {
+      "movieNm_kor2eng": "ㅣㅐㅍㄷ"
+    }
+  }
+}
+
+# 영/한 오타 변환
+POST my_movie_search/_search
+{
+  "size": 1, 
+  "query": {
+    "match": {
+      "movieNm_eng2kor": "dkssudgktpdy"
+    }
+  }
+}
+
+# 오타교정
+POST my_movie_search/_search
+{ 
+  "suggest" : {
+    "my-suggestion" : {
+      "text" : "얀녕하셰요",
+      "term" : {
+        "field" : "movieNm_text.spell",
+        "string_distance" : "jaro_winkler"
+      }
+    }
+  }
+}
+
+# 자동완성
+POST my_movie_search/_search
+{
+  "size": 10,
+  "query": {
+    "bool": {
+      "should": [
+        {
+          "match": {
+            "movieNm_ac": "감사합"
+          }
+        }
+      ]
     }
   }
 }
