@@ -42,6 +42,45 @@ PUT my_movie_search
           "type": "ngram",
           "min_gram": 4,
           "max_gram": 50
+        },
+        "nori_posfilter":{
+            "type":"nori_part_of_speech",
+            "stoptags":[
+                "E",
+                "IC",
+                "J",
+                "MAG",
+                "MM",
+                "NA",
+                "NR",
+                "SC",
+                "SE",
+                "SF",
+                "SH",
+                "SL",
+                "SN",
+                "SP",
+                "SSC",
+                "SSO",
+                "SY",
+                "UNA",
+                "UNKNOWN",
+                "VA",
+                "VCN",
+                "VCP",
+                "VSV",
+                "VV",
+                "VX",
+                "XPN",
+                "XR",
+                "XSA",
+                "XSN",
+                "XSV"
+            ]
+        },
+        "length_2":{
+          "type": "length",
+          "min": 2
         }
       },
       "char_filter": {
@@ -79,7 +118,9 @@ PUT my_movie_search
         },
         "default_kor_analyzer": {
           "filter": [
-            "lowercase"
+            "nori_posfilter",
+            "lowercase",
+            "length_2"
           ],
           "tokenizer": "korean_nori_tokenizer"
         },
