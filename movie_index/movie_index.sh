@@ -43,7 +43,7 @@ PUT my_movie_search
           "min_gram": 4,
           "max_gram": 50
         },
-        "nori_posfilter":{
+          "nori_posfilter":{
             "type":"nori_part_of_speech",
             "stoptags":[
                 "E",
@@ -107,6 +107,15 @@ PUT my_movie_search
         }
       },
       "analyzer": {
+        "nfd_analyzer": {
+            "filter": [
+                "lowercase"
+            ],
+            "char_filter": [
+                "nfd_normalizer"
+            ],
+            "tokenizer": "standard"
+        },
         "fix_analyzer": {
           "type": "custom",
           "tokenizer": "standard",
@@ -222,7 +231,7 @@ PUT my_movie_search
           },
           "spell": {
             "type": "text",
-            "analyzer": "fix_analyzer"
+            "analyzer": "nfd_analyzer"
           }
         }
       },
